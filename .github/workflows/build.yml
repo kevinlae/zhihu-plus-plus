@@ -1,4 +1,4 @@
-name: Build Zhihu-Plus-Plus (Rust + NDK)
+name: Build Zhihu-Plus-Plus (Fixed)
 
 on:
   workflow_dispatch:
@@ -8,8 +8,9 @@ jobs:
     runs-on: ubuntu-latest
 
     env:
-      ANDROID_SDK_ROOT: ${{ github.workspace }}/android-sdk
-      ANDROID_NDK_HOME: ${{ github.workspace }}/android-sdk/ndk/27.0.12077973
+      ANDROID_HOME: /usr/local/lib/android/sdk
+      ANDROID_SDK_ROOT: /usr/local/lib/android/sdk
+      ANDROID_NDK_HOME: /usr/local/lib/android/sdk/ndk/27.0.12077973
 
     steps:
       - name: 检出代码
@@ -21,50 +22,33 @@ jobs:
           distribution: 'temurin'
           java-version: '17'
 
-      # ----- 1. 安装 Android SDK（含 NDK）-----
-      - name: 安装 Android SDK 和 NDK
+      # ----- 使用预装 SDK，只安装 NDK -----
+      - name: 准备 Android 环境并安装 NDK
         run: |
-          mkdir -p ${ANDROID_SDK_ROOT}/cmdline-tools
-          cd ${ANDROID_SDK_ROOT}/cmdline-tools
+          # 接受许可（预装 SDK 的 licenses 可能未签署）
+          yes | ${ANDROID_HOME}/cmdline-tools/latest/bin/sdkmanager --sdk_root=${ANDROID_HOME} --licenses > /dev/null
+          # 安装指定版本 NDK
+          ${ANDROID_HOME}/cmdline-tools/latest/bin/sdkmanager --sdk_root=${ANDROID_HOME} "ndk;27.0.12077973"
 
-          # 下载最新命令行工具
-          wget -q https://dl.google.com/android/repository/commandlinetools-linux-11076708_latest.zip
-          unzip -q commandlinetools-linux-*.zip
-          rm commandlinetools-linux-*.zip
-          mv cmdline-tools latest
-
-          # 接受许可
-          yes | ${ANDROID_SDK_ROOT}/cmdline-tools/latest/bin/sdkmanager --licenses > /dev/null
-
-          # 安装编译所需组件（包括 NDK 27.0.12077973）
-          ${ANDROID_SDK_ROOT}/cmdline-tools/latest/bin/sdkmanager \
-            "platforms;android-34" \
-            "build-tools;34.0.0" \
-            "platform-tools" \
-            "ndk;27.0.12077973"
-
-      # ----- 2. 安装 Rust 及 Android 交叉编译目标 -----
+      # ----- 安装 Rust 及目标平台 -----
       - name: 安装 Rust
         run: |
           curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
           source $HOME/.cargo/env
           rustup target add aarch64-linux-android armv7-linux-androideabi x86_64-linux-android i686-linux-android
 
-      # ----- 3. 安装 cargo-ndk -----
+      # ----- 安装 cargo-ndk -----
       - name: 安装 cargo-ndk
         run: |
           source $HOME/.cargo/env
           cargo install cargo-ndk
 
-      # ----- 4. 编译 -----
+      # ----- 编译 -----
       - name: 赋予 Gradle 执行权限
         run: chmod +x ./gradlew
 
       - name: 编译 Debug APK
         run: ./gradlew assembleDebug
-        env:
-          ANDROID_SDK_ROOT: ${{ env.ANDROID_SDK_ROOT }}
-          ANDROID_NDK_HOME: ${{ env.ANDROID_NDK_HOME }}
 
       - name: 上传 APK
         uses: actions/upload-artifact@v4
