@@ -1,4 +1,4 @@
-name: Build Lite Release APK (Optimized)
+name: Build Lite Release APK (Auto-Signed)
 
 on:
   workflow_dispatch:
@@ -45,12 +45,36 @@ jobs:
       - name: 赋予 Gradle 执行权限
         run: chmod +x ./gradlew
 
-      # 🔥 核心修改：编译 Lite 版本的 Release APK
-      - name: 编译 Lite Release APK（不含 AI）
+      - name: 编译 Lite Release APK
         run: ./gradlew assembleLiteRelease
 
+      # ----- 签名 Release APK（使用 Debug 证书）-----
+      - name: 用 Debug 证书签名
+        run: |
+          # 如果没有 debug.keystore，则生成一个（CI 默认应该有，但以防万一）
+          if [ ! -f $HOME/.android/debug.keystore ]; then
+            keytool -genkey -v \
+              -keystore $HOME/.android/debug.keystore \
+              -alias androiddebugkey \
+              -keyalg RSA -keysize 2048 -validity 10000 \
+              -storepass android -keypass android \
+              -dname "CN=Android Debug,O=Android,C=US"
+          fi
+
+          # 找到编译出的 APK（可能是 app-lite-release.apk 或带 unsigned）
+          APK_FILE=$(find app/build/outputs/apk/lite/release -name "*.apk" | head -n 1)
+
+          # 签名
+          ${ANDROID_HOME}/build-tools/34.0.0/apksigner sign \
+            --ks $HOME/.android/debug.keystore \
+            --ks-pass pass:android \
+            --key-pass pass:android \
+            --ks-key-alias androiddebugkey \
+            $APK_FILE
+
+      # ----- 上传已签名的 APK -----
       - name: 上传 Lite 版 APK
         uses: actions/upload-artifact@v4
         with:
-          name: zhihu-plus-plus-lite-release  # 修改后的包名，更清晰
-          path: app/build/outputs/apk/lite/release/*.apk  # 注意路径也变了
+          name: zhihu-plus-plus-lite-release
+          path: app/build/outputs/apk/lite/release/*.apk
