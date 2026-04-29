@@ -1,4 +1,4 @@
-name: Build Zhihu-Plus-Plus (Fixed)
+name: Build Both APKs (Full & Lite)
 
 on:
   workflow_dispatch:
@@ -22,12 +22,10 @@ jobs:
           distribution: 'temurin'
           java-version: '17'
 
-      # ----- 使用预装 SDK，只安装 NDK -----
+      # ----- 准备 Android 环境（预装 SDK + 安装 NDK）-----
       - name: 准备 Android 环境并安装 NDK
         run: |
-          # 接受许可（预装 SDK 的 licenses 可能未签署）
           yes | ${ANDROID_HOME}/cmdline-tools/latest/bin/sdkmanager --sdk_root=${ANDROID_HOME} --licenses > /dev/null
-          # 安装指定版本 NDK
           ${ANDROID_HOME}/cmdline-tools/latest/bin/sdkmanager --sdk_root=${ANDROID_HOME} "ndk;27.0.12077973"
 
       # ----- 安装 Rust 及目标平台 -----
@@ -47,11 +45,21 @@ jobs:
       - name: 赋予 Gradle 执行权限
         run: chmod +x ./gradlew
 
-      - name: 编译 Debug APK
-        run: ./gradlew assembleDebug
+      - name: 编译 Full Debug APK（含本地 AI）
+        run: ./gradlew assembleFullDebug
 
-      - name: 上传 APK
+      - name: 编译 Lite Debug APK（不含 AI）
+        run: ./gradlew assembleLiteDebug
+
+      # ----- 分别上传两个 APK -----
+      - name: 上传 Full 版 APK
         uses: actions/upload-artifact@v4
         with:
-          name: zhihu-plus-plus-apk
-          path: app/build/outputs/apk/**/*.apk
+          name: zhihu-plus-plus-full-debug
+          path: app/build/outputs/apk/full/debug/*.apk
+
+      - name: 上传 Lite 版 APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: zhihu-plus-plus-lite-debug
+          path: app/build/outputs/apk/lite/debug/*.apk
