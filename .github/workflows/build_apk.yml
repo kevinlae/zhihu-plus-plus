@@ -1,0 +1,37 @@
+name: Android Build & Release APK
+
+on:
+  # 手动触发：在 GitHub 网页上点个按钮就能开始编译，最简单
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '17'
+
+      # 赋予 Gradle 脚本执行权限
+      - name: Grant execute permission for gradlew
+        run: chmod +x ./gradlew
+
+      # 编译 Debug 版本的 APK (Lite版)
+      - name: Build Debug APK
+        run: ./gradlew assembleDebug
+
+      # 编译 Release 版本的 APK (Full版，通常包含 AI 功能)
+      - name: Build Release APK
+        run: ./gradlew assembleRelease
+
+      # 上传所有构建好的 APK 文件
+      - name: Upload All APKs
+        uses: actions/upload-artifact@v4
+        with:
+          name: zhihu-plus-plus-apks
+          path: app/build/outputs/apk/**/*.apk
