@@ -1,4 +1,4 @@
-name: Build Both APKs (Full & Lite)
+name: Build Lite Release APK (Optimized)
 
 on:
   workflow_dispatch:
@@ -45,21 +45,12 @@ jobs:
       - name: 赋予 Gradle 执行权限
         run: chmod +x ./gradlew
 
-      - name: 编译 Full Debug APK（含本地 AI）
-        run: ./gradlew assembleFullDebug
-
-      - name: 编译 Lite Debug APK（不含 AI）
-        run: ./gradlew assembleLiteDebug
-
-      # ----- 分别上传两个 APK -----
-      - name: 上传 Full 版 APK
-        uses: actions/upload-artifact@v4
-        with:
-          name: zhihu-plus-plus-full-debug
-          path: app/build/outputs/apk/full/debug/*.apk
+      # 🔥 核心修改：编译 Lite 版本的 Release APK
+      - name: 编译 Lite Release APK（不含 AI）
+        run: ./gradlew assembleLiteRelease
 
       - name: 上传 Lite 版 APK
         uses: actions/upload-artifact@v4
         with:
-          name: zhihu-plus-plus-lite-debug
-          path: app/build/outputs/apk/lite/debug/*.apk
+          name: zhihu-plus-plus-lite-release  # 修改后的包名，更清晰
+          path: app/build/outputs/apk/lite/release/*.apk  # 注意路径也变了
